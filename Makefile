@@ -12,8 +12,8 @@ DATA_FILES=index_files.regexp static_files.regexp
 CLIENT_SAMPLE_FILES=client-samples/pkg-cacher-debian.list client-samples/pkg-cacher-ubuntu.list \
 	client-samples/pkg-cacher-centos.repo client-samples/pkg-cacher-fedora.repo \
 
-SRPMDIR:=$(shell rpm --eval '%{_srcrpmdir}')
-RPMDIR:=$(shell rpm --eval '%{_rpmdir}')
+#SRPMDIR:=$(shell rpm --eval '%{_srcrpmdir}')
+#RPMDIR:=$(shell rpm --eval '%{_rpmdir}')
 
 DESTDIR:=$(shell pwd)/../dist
 
