@@ -103,12 +103,12 @@ sub debug_callback {
 		return \$curl if (defined($curl));
 		
 		debug_message('fetch: init new libcurl object');
-		$curl=new WWW::Curl::Easy;
+		$curl = WWW::Curl::Easy->new();
 
 		# General
-		$curl->setopt(CURLOPT_USERAGENT, "pkg-cacher/$version (".$curl->version.")");
+		$curl->setopt(CURLOPT_USERAGENT, "pkg-cacher/$version (".$curl->version.')');
 		$curl->setopt(CURLOPT_NOPROGRESS, 1);
-		$curl->setopt(CURLOPT_CONNECTTIMEOUT, 60);
+		$curl->setopt(CURLOPT_CONNECTTIMEOUT, 10);
 		$curl->setopt(CURLOPT_NOSIGNAL, 1);
 		$curl->setopt(CURLOPT_LOW_SPEED_LIMIT, 0);
 		$curl->setopt(CURLOPT_LOW_SPEED_TIME, $cfg->{fetch_timeout});
@@ -123,11 +123,11 @@ sub debug_callback {
 		# $curl->setopt(CURLOPT_DEBUGFUNCTION, \&debug_callback);
 		# $curl->setopt(CURLOPT_VERBOSE, $cfg->{debug});
 
-		# Proxy
-		$curl->setopt(CURLOPT_PROXY, $cfg->{http_proxy})
-			if ($cfg->{use_proxy} && $cfg->{http_proxy});
-		$curl->setopt(CURLOPT_PROXYUSERPWD, $cfg->{http_proxy_auth})
-			if ($cfg->{use_proxy_auth});
+		# SSL
+		if (! $cfg->{require_valid_ssl}) {
+			$curl->setopt(CURLOPT_SSL_VERIFYPEER, 0);
+			$curl->setopt(CURLOPT_SSL_VERIFYHOST, 0);
+		}
 		
 		# Rate limit support
 		my $maxspeed;
@@ -167,13 +167,25 @@ sub libcurl {
 	my @hostpaths = @{$pathmap{$vhost}};
 
 	PROCESS_HOST: while () {
-		$response = new HTTP::Response;
+		$response = HTTP::Response->new();
 
 		# make the virtual hosts real. 
 		$hostcand = shift(@hostpaths);
 		debug_message("fetch: Candidate: $hostcand");
-		$url = $hostcand = ($hostcand =~ /^http:/ ? '' : 'http://').$hostcand.$uri;
+		$url = $hostcand = ($hostcand =~ /^https?:/ ? '' : 'http://').$hostcand.$uri;
 
+		# Proxy - SSL or otherwise - Needs to be set per host
+		if ($url =~ /^https:/) {
+			$curl->setopt(CURLOPT_PROXY, $cfg->{https_proxy})
+				if ($cfg->{use_proxy} && $cfg->{https_proxy});
+			$curl->setopt(CURLOPT_PROXYUSERPWD, $cfg->{https_proxy_auth})
+				if ($cfg->{use_proxy_auth});
+		} else {
+			$curl->setopt(CURLOPT_PROXY, $cfg->{http_proxy})
+				if ($cfg->{use_proxy} && $cfg->{http_proxy});
+			$curl->setopt(CURLOPT_PROXYUSERPWD, $cfg->{http_proxy_auth})
+				if ($cfg->{use_proxy_auth});
+		}
 		my $redirect_count = 0;
 		my $retry_count = 0;
 
@@ -203,14 +215,16 @@ sub libcurl {
 
 			$response->request($url);
 
-			if ($curl->getinfo(CURLINFO_HTTP_CODE) == '000') {
+			my $httpcode = $curl->getinfo(CURLINFO_HTTP_CODE);
+
+			if ($httpcode == 000 || $httpcode == 400) {
 				$retry_count++;
 				if ($retry_count > 5) {
 					info_message("fetch: retry count exceeded, trying next host in path_map");
 					last;
 				}
 
-				info_message("fetch: Retrying due to no response code from $url");
+				info_message("fetch: Retrying due to bad request or no response code from $url");
 
 				$url = $hostcand;
 
@@ -229,14 +243,14 @@ sub libcurl {
 					$url = $hostcand;
 				} else {
 					info_message("fetch: redirecting from $url to $newurl");
-					$url = $newurl
+					$url = $newurl;
 				}
 			} else {
-				# It isn't a redirect or a misformed response so we are done
+				# It isn't a redirect or a malformed response so we are done
 				last;
 			}
 
-			$response = new HTTP::Response;
+			$response = HTTP::Response->new();
 			if ($pkfdref) {
 				truncate($$pkfdref, 0);
 				sysseek($$pkfdref, 0, 0);

@@ -43,15 +43,18 @@ sub read_config {
 		generate_reports => 0,
 		expire_hours => 0,
 		http_proxy => '',
+		https_proxy => '',
 		use_proxy => 0,
 		http_proxy_auth => '',
+		https_proxy_auth => '',
 		use_proxy_auth => 0,
+		require_valid_ssl => 1,
 		debug => 0,
 		clean_cache => 0,
 		allowed_hosts_6 => '*',
 		allowed_hosts => '*',
 		limit => 0,
-		daemon_port => 3142,
+		daemon_port => 8080,
 		fetch_timeout => 300 # five minutes from now
 	);
 
@@ -98,9 +101,9 @@ sub check_install() {
 	}
 
 	foreach my $dir ($cfg->{cache_dir}, $cfg->{logdir}, 
-		    "$cfg->{cache_dir}/headers", "$cfg->{cache_dir}/import",
-		    "$cfg->{cache_dir}/packages", "$cfg->{cache_dir}/private",
-		    "$cfg->{cache_dir}/temp", "$cfg->{cache_dir}/cache") {
+			"$cfg->{cache_dir}/headers", "$cfg->{cache_dir}/packages",
+			"$cfg->{cache_dir}/private", "$cfg->{cache_dir}/temp",
+			"$cfg->{cache_dir}/cache") {
 		if (!-d $dir) {
 			print "Warning: $dir missing. Doing mkdir($dir, 0755)\n";
 			mkdir($dir, 0755) || die "Unable to create $dir";
