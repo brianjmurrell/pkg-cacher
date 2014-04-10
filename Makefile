@@ -1,5 +1,5 @@
 NAME=pkg-cacher
-VERSION=1.0.2
+VERSION=1.1.0
 TAROPTS=--directory .. --exclude=.git --exclude=.svn --exclude='*.swp' --exclude='*~' --dereference 
 
 PROGRAM_FILES=pkg-cacher pkg-cacher.pl pkg-cacher-request.pl pkg-cacher-fetch.pl \
@@ -11,9 +11,6 @@ REPOS_FILES=Repos/Debian.pm Repos/Fedora.pm
 DATA_FILES=index_files.regexp static_files.regexp
 CLIENT_SAMPLE_FILES=client-samples/pkg-cacher-debian.list client-samples/pkg-cacher-ubuntu.list \
 	client-samples/pkg-cacher-centos.repo client-samples/pkg-cacher-fedora.repo \
-
-#SRPMDIR:=$(shell rpm --eval '%{_srcrpmdir}')
-#RPMDIR:=$(shell rpm --eval '%{_rpmdir}')
 
 DESTDIR:=$(shell pwd)/../dist
 
@@ -36,12 +33,16 @@ tar: $(DESTDIR)/$(NAME)
 	)
 
 rpms: tar
-	rpmbuild --define "dist %{nil}" -ta $(DESTDIR)/$(NAME)/$(NAME)-$(VERSION).tar.bz2
-	mv $(SRPMDIR)/$(NAME)-*$(VERSION)*.src.rpm $(DESTDIR)/$(NAME)
-	mv $(RPMDIR)/noarch/$(NAME)-*$(VERSION)*.noarch.rpm $(DESTDIR)/$(NAME)
+	( \
+	SRPMDIR=`rpm --eval '%{_srcrpmdir}'`; \
+	RPMDIR=`rpm --eval '%{_rpmdir}'`; \
+	rpmbuild --define "dist %{nil}" -ta $(DESTDIR)/$(NAME)/$(NAME)-$(VERSION).tar.bz2; \
+	mv $$SRPMDIR/$(NAME)-*$(VERSION)*.src.rpm $(DESTDIR)/$(NAME); \
+	mv $$RPMDIR/noarch/$(NAME)-*$(VERSION)*.noarch.rpm $(DESTDIR)/$(NAME); \
+	)
 
 debs: $(DESTDIR)/debian
-	fakeroot dpkg-buildpackage -I.svn -I.git -us -uc
+	dpkg-buildpackage -I.svn -I.git -us -uc
 	mv ../$(NAME)*_$(VERSION)* $(DESTDIR)/debian
 
 clean:
